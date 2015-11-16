@@ -17,7 +17,18 @@ from PyPDF2 import PdfFileMerger
 
 def make_place_cards(spreadsheet_path, template_path, output_path,
                      keep_output=False, output_dir=None, inkscape_path='inkscape'):
-  """ Main entry point """
+  """
+  Make the place cards, writing out a single merged pdf.
+
+  Arguments:
+  spreadsheet_path -- the path to the spreadsheet of guest info
+  template_path -- the path to the SVG template
+  output_path -- the path to the merged PDF to make
+  keep_output -- set True if you want to see the intermediate files (default: False)
+  output_dir -- path to intermediate files (default: temporary directory)
+  inkscape_path -- path to the Inkscape executable (default: 'inkscape')
+  """
+
   if output_dir is None:
     output_dir = tempfile.mkdtemp()
 
@@ -33,12 +44,21 @@ def make_place_cards(spreadsheet_path, template_path, output_path,
 
 
 def _default_output_path(spreadsheet_path):
+  """ Determine the default output path of the merged PDF from the spreadsheet """
   name, ext = os.path.splitext(spreadsheet_path)
   return name + '.pdf'
 
 
 def _process_spreadsheet(spreadsheet):
-  cards_per_sheet = 6
+  """
+  Process the spreadsheet, returning a list of dictionaries.
+
+  Each dictionary has a list of names, table numbers, and food colors for
+  every card on a single sheet.
+
+  Arguments:
+  spreadsheet -- file object pointing to spreadsheet file
+  """
 
   # http://stackoverflow.com/questions/8991506/iterate-an-iterator-by-chunks-of-n-in-python
   def grouper(n, iterable):
@@ -62,6 +82,7 @@ def _process_spreadsheet(spreadsheet):
     'kids': '#ddafe9',
     'veggie': '#5fd38d',
   }
+  cards_per_sheet = 6
 
   return [
     # Standardize the guest info here
@@ -75,6 +96,16 @@ def _process_spreadsheet(spreadsheet):
 
 
 def _write_place_cards(guest_info, template, output_path, output_dir, inkscape_path):
+  """
+  Write out the place cards to a merged pdf.
+
+  Arguments:
+  guest_info -- the data structure returned by _process_spreadsheet
+  template -- a Jinja2 Template object
+  output_path -- the path to the merged output file
+  output_dir -- the path to the directory to use for temporary file generation
+  inkscape_path -- the path to the Inkscape executable
+  """
 
   dirnames = {}
   for filetype in ('svg', 'pdf'):
@@ -102,6 +133,9 @@ def _write_place_cards(guest_info, template, output_path, output_dir, inkscape_p
 
 
 def _convert_to_pdf(inkscape_path, svg_filename, pdf_filename):
+  """ Convert a generated inkscape SVG to a PDF. """
+
+  # abspath necessary here or else inkscape subprocess call is unhappy
   subprocess.call([inkscape_path,
                    '--export-pdf=' + os.path.abspath(pdf_filename),
                    os.path.abspath(svg_filename)])
@@ -109,15 +143,19 @@ def _convert_to_pdf(inkscape_path, svg_filename, pdf_filename):
 
 def _preprocess_template(template_string):
   """
-  Manipulate the template file before rendering the template, returning a new
+  Manipulate the template data before rendering the template, returning a new
   string.
 
   This allows us to replace colors with Jinja variable names, for example.
   """
+
+  # template_colors[i] = the color to replace with the food color in that
+  # card's location in the template sheet
   template_colors = ('#ff0000', '#00ff00', '#0000ff',
                      '#800000', '#008000', '#000080')
 
   for index, color in enumerate(template_colors):
+    # {{ is escaped {
     template_string = re.sub(color, '{{{{ colors.{0} }}}}'.format(index), template_string)
 
   return template_string
