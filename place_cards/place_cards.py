@@ -115,7 +115,7 @@ def _write_place_cards(guest_info, template, output_path, output_dir, inkscape_p
     except OSError:
       pass
 
-  merger = PdfFileMerger()
+  pdf_paths = []
   for ix, sheet in enumerate(guest_info, start=1):
     filename_base = 'place_cards-{0}.'.format(ix)
 
@@ -127,8 +127,16 @@ def _write_place_cards(guest_info, template, output_path, output_dir, inkscape_p
       svg.write(template.render(sheet))
 
     _convert_to_pdf(inkscape_path, filenames['svg'], filenames['pdf'])
-    merger.append(filenames['pdf'])
+    pdf_paths.append(filenames['pdf'])
 
+  _merge_pdfs(pdf_paths, output_path)
+
+
+def _merge_pdfs(pdf_paths, output_path):
+  """ Merge pdf paths from an iterable into a single file. """
+  merger = PdfFileMerger()
+  for path in pdf_paths:
+    merger.append(path)
   merger.write(output_path)
 
 
