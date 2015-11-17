@@ -76,21 +76,36 @@ def _process_spreadsheet(spreadsheet):
 
       yield tuple(chunk)
 
-  food_colors = {
-    'salmon': '#ffaaaa',
-    'pork': '#5f8dd3',
-    'kids': '#ddafe9',
-    'veggie': '#5fd38d',
-    'vegan': '#bfbfbf',
-  }
   cards_per_sheet = 6
+
+  def get_name(name):
+    return name
+
+  def get_table(table):
+    try:
+      table = int(table)
+    except ValueError:
+      pass
+
+    return table
+
+  def get_color(food):
+    food_colors = {
+      'salmon': '#ffaaaa',
+      'pork': '#5f8dd3',
+      'kids': '#ddafe9',
+      'vegetarian': '#5fd38d',
+      'vegan': '#bfbfbf',
+    }
+    key = re.sub(r'\W', '', food.lower())
+    return food_colors[key]
 
   return [
     # Standardize the guest info here
     {
-      'names': [guest['Name'] for guest in sheet],
-      'tables': [guest['Table'] for guest in sheet],
-      'colors': [food_colors[guest['Food'].lower()] for guest in sheet],
+      'names': [get_name(guest['Name']) for guest in sheet],
+      'tables': [get_table(guest['Table']) for guest in sheet],
+      'colors': [get_color(guest['Food']) for guest in sheet],
     }
     for sheet in grouper(cards_per_sheet, csv.DictReader(spreadsheet))
   ]
@@ -155,7 +170,8 @@ def _preprocess_template(template_string):
   Manipulate the template data before rendering the template, returning a new
   string.
 
-  This allows us to replace colors with Jinja variable names, for example.
+  This allows us to replace colors with Jinja variable names, and avoid
+  Inkscape automatically html-escaping quotes.
   """
 
   # template_colors[i] = the color to replace with the food color in that
@@ -167,6 +183,8 @@ def _preprocess_template(template_string):
     # {{ is escaped {
     template_string = re.sub(color, '{{{{ colors.{0} }}}}'.format(index), template_string)
 
+  template_string = template_string.replace('|', '"')
+
   return template_string
 
 
@@ -176,7 +194,8 @@ if __name__ == '__main__':
   )
   parser.add_argument('spreadsheet_path',
                       help='a .csv file of names, food choices, and table numbers for all guests')
-  parser.add_argument('-t', '--template', dest='template_path', default='template.svg',
+  parser.add_argument('-t', '--template', dest='template_path',
+                      default=os.path.join(os.path.dirname(__file__), 'template.svg'),
                       help="the template filename; defaults to 'template.svg'")
   parser.add_argument('-o', '--output', dest='output_path', default=None,
                       help='the name of the final, merged output file; '
