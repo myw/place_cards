@@ -81,6 +81,7 @@ def _process_spreadsheet(spreadsheet):
     'pork': '#5f8dd3',
     'kids': '#ddafe9',
     'veggie': '#5fd38d',
+    'vegan': '#bfbfbf',
   }
   cards_per_sheet = 6
 
